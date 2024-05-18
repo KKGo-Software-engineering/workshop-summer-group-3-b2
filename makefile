@@ -51,3 +51,7 @@ health:
 spenders:
 	@echo "Getting the spenders..."
 	curl -u user:secret http://localhost:8080/api/v1/spenders
+
+.PHONY: run local
+run-local:
+	ENV=LOCAL LOCAL_DATABASE_POSTGRES_URI=postgres://postgres:password@localhost:5432/hongjot?sslmode=disable LOCAL_SERVER_PORT=8080 LOCAL_ENABLE_CREATE_SPENDER=false go run main.go
