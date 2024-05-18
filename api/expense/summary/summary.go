@@ -15,10 +15,19 @@ type Data struct {
 	CountExpenses int
 }
 
+// total amount spent, the average amount spent per day, and the total number of expenses
+//
+//	{
+//		"summary": {
+//			"total_income": 2000,
+//			"total_expenses": 1000,
+//			"current_balance": 1000
+//		}
+//	}
 type Summary struct {
-	Total   float64 `json:"total"`
-	Average float64 `json:"average"`
-	Count   int     `json:"count"`
+	TotalAmount      float64 `json:"total_amount"`
+	AveragePerDay    float64 `json:"average_per_day"`
+	CountTransaction int     `json:"count_transaction"`
 }
 
 type Storer interface {
@@ -46,9 +55,9 @@ func summary(data []Data) Summary {
 	}
 
 	return Summary{
-		Total:   total,
-		Average: total / float64(len(data)),
-		Count:   count,
+		TotalAmount:      total,
+		AveragePerDay:    total / float64(len(data)),
+		CountTransaction: count,
 	}
 }
 

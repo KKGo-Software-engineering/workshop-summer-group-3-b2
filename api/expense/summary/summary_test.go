@@ -1,6 +1,8 @@
 package summary
 
 import (
+	"github.com/stretchr/testify/assert"
+	_ "github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -11,33 +13,31 @@ func TestSummary(t *testing.T) {
 		want Summary
 	}{
 		{
-			name: "EmptyData",
+			name: "empty data",
 			data: []Data{},
-			want: Summary{Total: 0, Average: 0, Count: 0},
+			want: Summary{TotalAmount: 0, AveragePerDay: 0, CountTransaction: 0},
 		},
 		{
-			name: "SingleData",
+			name: "single data",
 			data: []Data{
 				{SumAmount: 10, CountExpenses: 1},
 			},
-			want: Summary{Total: 10, Average: 10, Count: 1},
+			want: Summary{TotalAmount: 10, AveragePerDay: 10, CountTransaction: 1},
 		},
 		{
-			name: "MultipleData",
+			name: "multiple data",
 			data: []Data{
 				{SumAmount: 20, CountExpenses: 2},
 				{SumAmount: 30, CountExpenses: 3},
 			},
-			want: Summary{Total: 50, Average: 25, Count: 5},
+			want: Summary{TotalAmount: 50, AveragePerDay: 25, CountTransaction: 5},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := summary(tc.data)
-			if got != tc.want {
-				t.Errorf("summary(%v) = %v; want %v", tc.data, got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
