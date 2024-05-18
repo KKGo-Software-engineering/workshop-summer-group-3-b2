@@ -54,4 +54,8 @@ spenders:
 
 .PHONY: run local
 run-local:
-	ENV=LOCAL LOCAL_DATABASE_POSTGRES_URI=postgres://postgres:password@localhost:5432/hongjot?sslmode=disable LOCAL_SERVER_PORT=8080 LOCAL_ENABLE_CREATE_SPENDER=false go run main.go
+	ENV=LOCAL \
+	LOCAL_DATABASE_POSTGRES_URI=postgres://postgres:password@localhost:5432/hongjot?sslmode=disable \
+	LOCAL_SERVER_PORT=8080 \
+	LOCAL_ENABLE_CREATE_SPENDER=false \
+	go run main.go
