@@ -1,7 +1,8 @@
 package summary
 
 import (
-	"github.com/KKGo-Software-engineering/workshop-summer/api/expense"
+	"database/sql"
+	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
 	"time"
 )
 
@@ -9,40 +10,28 @@ type Spender struct {
 	ID int `param:"id"`
 }
 
-type Data struct {
+type RawData struct {
 	Date          time.Time
 	SumAmount     float64
 	CountExpenses int
 }
 
-// total amount spent, the average amount spent per day, and the total number of expenses
-//
-//	{
-//		"summary": {
-//			"total_income": 2000,
-//			"total_expenses": 1000,
-//			"current_balance": 1000
-//		}
-//	}
 type Summary struct {
-	TotalAmount      float64 `json:"total_amount"`
-	AveragePerDay    float64 `json:"average_per_day"`
-	CountTransaction int     `json:"count_transaction"`
+	Total   float64 `json:"total_amount"`
+	Average float64 `json:"average_per_day"`
+	Count   int     `json:"count_transaction"`
 }
 
-type Storer interface {
-	GetExpenses(spenderID int) ([]expense.Expense, error)
+type handler struct {
+	flag config.FeatureFlag
+	db   *sql.DB
 }
 
-type Handler struct {
-	store Storer
+func New(cfg config.FeatureFlag, db *sql.DB) *handler {
+	return &handler{cfg, db}
 }
 
-func New(db Storer) *Handler {
-	return &Handler{store: db}
-}
-
-func summary(data []Data) Summary {
+func summary(data []RawData) Summary {
 	if len(data) == 0 {
 		return Summary{}
 	}
@@ -55,13 +44,13 @@ func summary(data []Data) Summary {
 	}
 
 	return Summary{
-		TotalAmount:      total,
-		AveragePerDay:    total / float64(len(data)),
-		CountTransaction: count,
+		Total:   total,
+		Average: total / float64(len(data)),
+		Count:   count,
 	}
 }
 
-//func (h *Handler) GetExpenseSummaryHandler(c echo.Context) error {
+//func (h *handler) GetExpenseSummaryHandler(c echo.Context) error {
 //	var spender Spender
 //	if err := c.Bind(&spender); err != nil {
 //		return c.JSON(http.StatusBadRequest, err)

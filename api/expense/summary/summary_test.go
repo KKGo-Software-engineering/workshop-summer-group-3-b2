@@ -1,55 +1,35 @@
 package summary
 
 import (
-	"github.com/KKGo-Software-engineering/workshop-summer/api/expense"
 	"github.com/stretchr/testify/assert"
-	_ "github.com/stretchr/testify/assert"
 	"testing"
 )
-
-type mockStorer struct{}
-
-func (ms *mockStorer) GetExpenses(spenderID int) ([]expense.Expense, error) {
-	return []expense.Expense{}, nil
-}
-
-func TestNew(t *testing.T) {
-	// Arrange
-	mockDB := &mockStorer{}
-
-	// Act
-	got := New(mockDB)
-
-	// Assert
-	assert.NotNil(t, got)
-	assert.Equal(t, mockDB, got.store)
-}
 
 func TestSummary(t *testing.T) {
 	testCases := []struct {
 		name string
-		data []Data
+		data []RawData
 		want Summary
 	}{
 		{
 			name: "empty data",
-			data: []Data{},
-			want: Summary{TotalAmount: 0, AveragePerDay: 0, CountTransaction: 0},
+			data: []RawData{},
+			want: Summary{Total: 0, Average: 0, Count: 0},
 		},
 		{
 			name: "single data",
-			data: []Data{
+			data: []RawData{
 				{SumAmount: 10, CountExpenses: 1},
 			},
-			want: Summary{TotalAmount: 10, AveragePerDay: 10, CountTransaction: 1},
+			want: Summary{Total: 10, Average: 10, Count: 1},
 		},
 		{
 			name: "multiple data",
-			data: []Data{
+			data: []RawData{
 				{SumAmount: 20, CountExpenses: 2},
 				{SumAmount: 30, CountExpenses: 3},
 			},
-			want: Summary{TotalAmount: 50, AveragePerDay: 25, CountTransaction: 5},
+			want: Summary{Total: 50, Average: 25, Count: 5},
 		},
 	}
 
