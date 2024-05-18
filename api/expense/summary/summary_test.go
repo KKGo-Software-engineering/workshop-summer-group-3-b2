@@ -1,10 +1,29 @@
 package summary
 
 import (
+	"github.com/KKGo-Software-engineering/workshop-summer/api/expense"
 	"github.com/stretchr/testify/assert"
 	_ "github.com/stretchr/testify/assert"
 	"testing"
 )
+
+type mockStorer struct{}
+
+func (ms *mockStorer) GetExpenses(spenderID int) ([]expense.Expense, error) {
+	return []expense.Expense{}, nil
+}
+
+func TestNew(t *testing.T) {
+	// Arrange
+	mockDB := &mockStorer{}
+
+	// Act
+	got := New(mockDB)
+
+	// Assert
+	assert.NotNil(t, got)
+	assert.Equal(t, mockDB, got.store)
+}
 
 func TestSummary(t *testing.T) {
 	testCases := []struct {
