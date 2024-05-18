@@ -2,9 +2,22 @@ package summary
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
+	"github.com/kkgo-software-engineering/workshop/mlog"
+	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
+	"net/http"
 	"time"
 )
+
+var (
+	ErrInvalidSpender = errors.New("invalid spender")
+)
+
+type Err struct {
+	Message string `json:"message"`
+}
 
 type Spender struct {
 	ID int `param:"id"`
@@ -50,12 +63,18 @@ func summary(data []RawData) Summary {
 	}
 }
 
-//func (h *handler) GetExpenseSummaryHandler(c echo.Context) error {
-//	var spender Spender
-//	if err := c.Bind(&spender); err != nil {
-//		return c.JSON(http.StatusBadRequest, err)
-//	}
-//
-//	expenses := h.store.GetExpenses()
-//
-//}
+// /api/v1/spenders/{id}/expenses/summary
+func (h *handler) GetExpenseSummaryHandler(c echo.Context) error {
+	logger := mlog.L(c)
+	//ctx := c.Request().Context()
+	_ = c.Request().Context()
+
+	var spender Spender
+	err := c.Bind(&spender)
+	if err != nil {
+		logger.Error(ErrInvalidSpender.Error(), zap.Error(err))
+		return c.JSON(http.StatusBadRequest, Err{Message: ErrInvalidSpender.Error()})
+	}
+
+	return c.JSON(http.StatusOK, Summary{})
+}
