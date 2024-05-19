@@ -20,12 +20,7 @@ import (
 
 func TestCreateTransactionIT(t *testing.T) {
 	t.Run("create transaction successfully", func(t *testing.T) {
-		sql, err := getTestDatabaseFromConfig()
-		if err != nil {
-			t.Error(err)
-		}
-		migration.ApplyMigrations(sql)
-		defer migration.RollbackMigrations(sql)
+		sql := getTestDatabaseFromConfig(t)
 
 		h := New(sql)
 		e := echo.New()
@@ -50,12 +45,7 @@ func TestCreateTransactionIT(t *testing.T) {
 
 func TestGetTransactionIT(t *testing.T) {
 	t.Run("create get transactions successfully", func(t *testing.T) {
-		sql, err := getTestDatabaseFromConfig()
-		if err != nil {
-			t.Error(err)
-		}
-		migration.ApplyMigrations(sql)
-		defer migration.RollbackMigrations(sql)
+		sql := getTestDatabaseFromConfig(t)
 		h := New(sql)
 		e := echo.New()
 		defer e.Close()
@@ -72,7 +62,8 @@ func TestGetTransactionIT(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.JSONEq(t, `[{
+
+		wantJsonStr := `[{
     "id": 1,
     "date": "2024-05-18T11:51:49.673703Z",
     "amount": 66.6,
@@ -92,15 +83,43 @@ func TestGetTransactionIT(t *testing.T) {
     "image_url": "/img/transaction/2.jpg",
     "spender_id": 5
   }]
-`, rec.Body.String())
+`
+		var want []response
+		err := json.Unmarshal([]byte(wantJsonStr), &want)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var got []response
+		err = json.Unmarshal(rec.Body.Bytes(), &got)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Equal(t, len(want), len(got))
+
+		for i := range want {
+			assert.Equal(t, want[i].Amount, got[i].Amount)
+			assert.Equal(t, want[i].Category, got[i].Category)
+			assert.Equal(t, want[i].Date, got[i].Date)
+			assert.Equal(t, want[i].ImageUrl, got[i].ImageUrl)
+			assert.Equal(t, want[i].Note, got[i].Note)
+			assert.Equal(t, want[i].SpenderId, got[i].SpenderId)
+			assert.Equal(t, want[i].TransactionType, got[i].TransactionType)
+		}
 	})
 }
 
-func getTestDatabaseFromConfig() (*sql.DB, error) {
+func getTestDatabaseFromConfig(t *testing.T) *sql.DB {
+	t.Helper()
 	cfg := config.Parse("DOCKER")
 	sql, err := sql.Open("postgres", cfg.PostgresURI())
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	return sql, nil
+	migration.ApplyMigrations(sql)
+	t.Cleanup(func() {
+		sql.Query("DELETE FROM transaction")
+	})
+	return sql
 }
