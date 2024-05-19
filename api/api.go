@@ -43,6 +43,8 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 		h := transaction.New(db)
 		v1.POST("/transactions", h.Create)
 		v1.GET("/transactions", h.GetAll)
+		v1.PUT("/spenders/:spenderId/transactions/:transId", h.Update)
+		v1.DELETE("/spenders/:spenderId/transactions/:transId", h.Delete)
 	}
 
 	{

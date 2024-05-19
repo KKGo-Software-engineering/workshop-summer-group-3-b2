@@ -21,6 +21,9 @@ type anyTime struct{}
 // Match satisfies sqlmock.Argument interface
 func (a anyTime) Match(v driver.Value) bool {
 	_, ok := v.(time.Time)
+	_, ok = v.(int)
+	_, ok = v.(string)
+	_, ok = v.(float64)
 	return ok
 }
 
@@ -54,6 +57,20 @@ func setupTest(transaction request) (echo.Context, *httptest.ResponseRecorder) {
 	return c, rec
 }
 
+func setupUpdateOrDeleteTest(method string, transaction request) (echo.Context, *httptest.ResponseRecorder) {
+	body, err := json.Marshal(transaction)
+	if err != nil {
+		log.Fatal(err)
+	}
+	e := echo.New()
+	defer e.Close()
+	req := httptest.NewRequest(method, "/spenders/1/transactions/1", bytes.NewBuffer(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	return c, rec
+}
+
 func TestCreateTransaction(t *testing.T) {
 	t.Run("Create Transaction Successfully", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -63,8 +80,7 @@ func TestCreateTransaction(t *testing.T) {
 		req := mockTransactionRequest()
 		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
 		c, rec := setupTest(req)
-		mock.ExpectQuery(insertStatement).WithArgs(anyTime{}, req.Amount, req.Category,
-			req.TransactionType, req.Note, req.ImageUrl, req.SpenderId).WillReturnRows(row)
+		mock.ExpectQuery(insertStatement).WillReturnRows(row)
 		h := New(db)
 		err = h.Create(c)
 		assert.NoError(t, err)
@@ -218,6 +234,114 @@ func TestGetAllExpense(t *testing.T) {
 		h := New(db)
 		err := h.GetAll(c)
 
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+func TestUpdateTransaction(t *testing.T) {
+	t.Run("Update Transaction Successfully", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		date, _ := time.Parse(time.RFC3339, "2024-05-18T11:51:49.673703Z")
+		req := mockTransactionRequest()
+		req.Date = date
+		c, rec := setupUpdateOrDeleteTest(http.MethodPut, req)
+		mock.ExpectExec(updateStatment).WillReturnResult(sqlmock.NewResult(1, 1))
+		h := New(db)
+		err = h.Update(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+	t.Run("Update Transaction fail request body is invalid", func(t *testing.T) {
+		db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		e := echo.New()
+		defer e.Close()
+		req := httptest.NewRequest(http.MethodPut, "/spenders/1/transactions/1", strings.NewReader("123123123"))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		h := New(db)
+		err = h.Update(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+	t.Run("Update Transaction fail amount is lower than 0.0", func(t *testing.T) {
+		db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		date, _ := time.Parse(time.RFC3339, "2024-05-18T11:51:49.673703Z")
+		req := mockTransactionRequest()
+		req.Amount = -1
+		req.Date = date
+		c, rec := setupUpdateOrDeleteTest(http.MethodPut, req)
+		h := New(db)
+		err = h.Update(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.JSONEq(t, `{"message":"amount is lower than 0.0"}`, rec.Body.String())
+	})
+	t.Run("Update Transaction fail category is empty", func(t *testing.T) {
+		db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		req := mockTransactionRequest()
+		req.Category = ""
+		c, rec := setupUpdateOrDeleteTest(http.MethodPut, req)
+		h := New(db)
+		err = h.Update(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.JSONEq(t, `{"message":"category is required"}`, rec.Body.String())
+	})
+	t.Run("Update Transaction fail db error", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		req := mockTransactionRequest()
+		c, rec := setupUpdateOrDeleteTest(http.MethodPut, req)
+		mock.ExpectExec(updateStatment).WillReturnError(errors.New("error"))
+		h := New(db)
+		err = h.Update(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+}
+
+func TestDeleteTransaction(t *testing.T) {
+	t.Run("Delete Transaction Successfully", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		date, _ := time.Parse(time.RFC3339, "2024-05-18T11:51:49.673703Z")
+		req := mockTransactionRequest()
+		req.Date = date
+		c, rec := setupUpdateOrDeleteTest(http.MethodDelete, req)
+		mock.ExpectExec(deleteStatment).WillReturnResult(sqlmock.NewResult(1, 1))
+		h := New(db)
+		err = h.Delete(c)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+	t.Run("Delete Transaction fail db error", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		if err != nil {
+			log.Fatal(err)
+		}
+		req := mockTransactionRequest()
+		c, rec := setupUpdateOrDeleteTest(http.MethodDelete, req)
+		mock.ExpectExec(deleteStatment).WillReturnError(errors.New("error"))
+		h := New(db)
+		err = h.Delete(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	})

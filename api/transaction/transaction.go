@@ -14,6 +14,8 @@ import (
 const (
 	insertStatement = `INSERT INTO transaction (date, amount, category, transaction_type, note, image_url, spender_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;`
+	updateStatment = `UPDATE transaction SET date = $1 , amount = $2, category = $3 , note = $4, image_url = $5 WHERE id = $6 AND spender_id = $7;`
+	deleteStatment = `DELETE FROM transaction WHERE id = $1 AND spender_id = $2;`
 )
 
 type transactionError struct {
@@ -84,7 +86,6 @@ func (h handler) GetAll(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 	tranType := c.QueryParam("transaction_type")
-	fmt.Println(tranType)
 	if tranType != "EXPENSE" && tranType != "INCOME" {
 		return c.JSON(http.StatusBadRequest, transactionError{Message: "invalid transaction type"})
 	}
@@ -106,4 +107,56 @@ func (h handler) GetAll(c echo.Context) error {
 		res = append(res, t)
 	}
 	return c.JSON(http.StatusOK, res)
+}
+
+func (h *handler) Update(c echo.Context) error {
+	logger := mlog.L(c)
+	var req request
+	spenderId := c.Param("spenderId")
+	transId := c.Param("transId")
+	err := c.Bind(&req)
+	if err != nil {
+		logger.Error("error", zap.Error(err))
+		return c.JSON(http.StatusBadRequest, transactionError{Message: "invalid request body"})
+	}
+	if err = validateTransaction(req); err != nil {
+		return c.JSON(http.StatusBadRequest, transactionError{Message: err.Error()})
+	}
+	result, err := h.db.Exec(updateStatment, req.Date, req.Amount, req.Category, req.Note, req.ImageUrl, transId, spenderId)
+	if err != nil {
+		logger.Error("update transaction", zap.Error(err))
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	rowAff, err := result.RowsAffected()
+	if err != nil {
+		logger.Error("update transaction:", zap.Error(err))
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if rowAff == 0 {
+		logger.Error(fmt.Sprintf("Can't update transaction by id = %s and spender_id =%s", transId, spenderId))
+		return c.NoContent(http.StatusBadRequest)
+	}
+	return c.JSON(http.StatusOK, "Update success")
+}
+
+func (h *handler) Delete(c echo.Context) error {
+	logger := mlog.L(c)
+	spenderId := c.Param("spenderId")
+	transId := c.Param("transId")
+
+	result, err := h.db.Exec(deleteStatment, transId, spenderId)
+	if err != nil {
+		logger.Error("delete transaction", zap.Error(err))
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	rowAff, err := result.RowsAffected()
+	if err != nil {
+		logger.Error("delete transaction:", zap.Error(err))
+		return c.NoContent(http.StatusInternalServerError)
+	}
+	if rowAff == 0 {
+		logger.Error(fmt.Sprintf("Can't delete transaction by id = %s and spender_id =%s", transId, spenderId))
+		return c.NoContent(http.StatusBadRequest)
+	}
+	return c.JSON(http.StatusOK, "Delete success")
 }
