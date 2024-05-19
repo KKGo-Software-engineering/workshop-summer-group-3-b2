@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"github.com/KKGo-Software-engineering/workshop-summer/api/income"
+	"github.com/KKGo-Software-engineering/workshop-summer/api/transaction"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
 	"github.com/KKGo-Software-engineering/workshop-summer/api/eslip"
@@ -39,8 +39,8 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 	}
 
 	{
-		h := income.New(db)
-		v1.POST("/incomes", h.Create)
+		h := transaction.New(db)
+		v1.POST("/transactions", h.Create)
 	}
 
 	return &Server{e}

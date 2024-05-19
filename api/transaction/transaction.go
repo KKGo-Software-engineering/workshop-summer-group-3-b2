@@ -1,4 +1,4 @@
-package income
+package transaction
 
 import (
 	"database/sql"
@@ -13,15 +13,13 @@ import (
 const (
 	insertStatement = `INSERT INTO transaction (date, amount, category, transaction_type, note, image_url, spender_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;`
-	transactionIncome = "Income"
 )
 
-type incomeError struct {
+type transactionError struct {
 	Message string `json:"message"`
 }
 
-type income struct {
-	Id              int       `json:"id"`
+type transactionRequest struct {
 	Date            time.Time `json:"date"`
 	Amount          float64   `json:"amount"`
 	Category        string    `json:"category"`
@@ -30,6 +28,7 @@ type income struct {
 	ImageUrl        string    `json:"image_url"`
 	SpenderId       int       `json:"spender_id"`
 }
+
 type handler struct {
 	db *sql.DB
 }
@@ -41,33 +40,29 @@ func New(db *sql.DB) *handler {
 func (h *handler) Create(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
-	var inc income
-	err := c.Bind(&inc)
+	var req transactionRequest
+	err := c.Bind(&req)
 	if err != nil {
 		logger.Error("error", zap.Error(err))
-		return c.JSON(http.StatusBadRequest, incomeError{Message: "invalid request body"})
+		return c.JSON(http.StatusBadRequest, transactionError{Message: "invalid request body"})
 	}
-	if err = validateIncome(inc); err != nil {
-		return c.JSON(http.StatusBadRequest, incomeError{Message: err.Error()})
+	if err = validateTransaction(req); err != nil {
+		return c.JSON(http.StatusBadRequest, transactionError{Message: err.Error()})
 	}
-	inc.TransactionType = transactionIncome
 	var lastInsertId int
-	err = h.db.QueryRowContext(ctx, insertStatement, inc.Date, inc.Amount, inc.Category,
-		inc.TransactionType, inc.Note, inc.ImageUrl, inc.SpenderId).Scan(&lastInsertId)
+	err = h.db.QueryRowContext(ctx, insertStatement, req.Date, req.Amount, req.Category,
+		req.TransactionType, req.Note, req.ImageUrl, req.SpenderId).Scan(&lastInsertId)
 	if err != nil {
-		logger.Error("insert income into transaction table error:", zap.Error(err))
+		logger.Error("insert transaction into transaction table error:", zap.Error(err))
 		return c.NoContent(http.StatusInternalServerError)
 	}
-	inc.Id = lastInsertId
-	return c.JSON(http.StatusCreated, inc)
+	return c.NoContent(http.StatusCreated)
 }
 
-func validateIncome(inc income) error {
-	if inc.SpenderId == 0 {
-		return errors.New("spender id is required")
-	} else if inc.Amount < 0.0 {
+func validateTransaction(req transactionRequest) error {
+	if req.Amount < 0.0 {
 		return errors.New("amount is lower than 0.0")
-	} else if inc.Category == "" {
+	} else if req.Category == "" {
 		return errors.New("category is required")
 	}
 	return nil

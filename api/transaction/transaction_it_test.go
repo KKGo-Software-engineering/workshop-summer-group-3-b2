@@ -1,6 +1,6 @@
 //go:build integration
 
-package income
+package transaction
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 )
 
 func TestCreateIncomeIT(t *testing.T) {
-	t.Run("create income successfully", func(t *testing.T) {
+	t.Run("create transaction successfully", func(t *testing.T) {
 		sql, err := getTestDatabaseFromConfig()
 		if err != nil {
 			t.Error(err)
@@ -30,22 +30,20 @@ func TestCreateIncomeIT(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		e.POST("/incomes", h.Create)
+		e.POST("/transactions", h.Create)
 
-		payload := mockIncomeRequest()
+		payload := mockTransactionRequest()
 		body, err := json.Marshal(payload)
 		if err != nil {
 			log.Fatal(err)
 		}
-		req := httptest.NewRequest(http.MethodPost, "/incomes", bytes.NewBuffer(body))
+		req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 
 		e.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.JSONEq(t, `{"amount":66.6, "category":"Food", "date":"2024-05-18T12:00:00+07:00",
-"id":1, "image_url":"/img/income/1.jpg", "note":"Note1234", "spender_id":5, "transaction_type":"Income"}`, rec.Body.String())
 	})
 }
 

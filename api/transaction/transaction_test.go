@@ -1,4 +1,4 @@
-package income
+package transaction
 
 import (
 	"bytes"
@@ -24,29 +24,30 @@ func (a anyTime) Match(v driver.Value) bool {
 	return ok
 }
 
-func mockIncomeRequest() income {
+func mockTransactionRequest() transactionRequest {
 	loc, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
 		log.Fatal(err)
 	}
-	return income{
-		Date:      time.Date(2024, time.May, 18, 12, 0, 0, 0, loc),
-		Amount:    66.6,
-		Category:  "Food",
-		Note:      "Note1234",
-		ImageUrl:  "/img/income/1.jpg",
-		SpenderId: 5,
+	return transactionRequest{
+		Date:            time.Date(2024, time.May, 18, 12, 0, 0, 0, loc),
+		Amount:          66.6,
+		Category:        "Food",
+		Note:            "Note1234",
+		ImageUrl:        "/img/transaction/1.jpg",
+		TransactionType: "INCOME",
+		SpenderId:       5,
 	}
 }
 
-func setupTest(inc income) (echo.Context, *httptest.ResponseRecorder) {
-	body, err := json.Marshal(inc)
+func setupTest(transaction transactionRequest) (echo.Context, *httptest.ResponseRecorder) {
+	body, err := json.Marshal(transaction)
 	if err != nil {
 		log.Fatal(err)
 	}
 	e := echo.New()
 	defer e.Close()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/income", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/transaction", bytes.NewBuffer(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
@@ -59,27 +60,25 @@ func TestCreateIncome(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		req := mockIncomeRequest()
+		req := mockTransactionRequest()
 		row := sqlmock.NewRows([]string{"id"}).AddRow(1)
 		c, rec := setupTest(req)
 		mock.ExpectQuery(insertStatement).WithArgs(anyTime{}, req.Amount, req.Category,
-			transactionIncome, req.Note, req.ImageUrl, req.SpenderId).WillReturnRows(row)
+			req.TransactionType, req.Note, req.ImageUrl, req.SpenderId).WillReturnRows(row)
 		h := New(db)
 		err = h.Create(c)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusCreated, rec.Code)
-		assert.JSONEq(t, `{"amount":66.6, "category":"Food", "date":"2024-05-18T12:00:00+07:00",
-"id":1, "image_url":"/img/income/1.jpg", "note":"Note1234", "spender_id":5, "transaction_type":"Income"}`, rec.Body.String())
 	})
 	t.Run("Create Income Successfully", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		if err != nil {
 			log.Fatal(err)
 		}
-		req := mockIncomeRequest()
+		req := mockTransactionRequest()
 		c, rec := setupTest(req)
 		mock.ExpectQuery(insertStatement).WithArgs(anyTime{}, req.Amount, req.Category,
-			transactionIncome, req.Note, req.ImageUrl, req.SpenderId).WillReturnError(errors.New("error db"))
+			req.TransactionType, req.Note, req.ImageUrl, req.SpenderId).WillReturnError(errors.New("error db"))
 		h := New(db)
 		err = h.Create(c)
 		assert.NoError(t, err)
@@ -92,7 +91,7 @@ func TestCreateIncome(t *testing.T) {
 		}
 		e := echo.New()
 		defer e.Close()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/income", strings.NewReader("test"))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/transaction", strings.NewReader("test"))
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
@@ -102,26 +101,12 @@ func TestCreateIncome(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.JSONEq(t, `{"message":"invalid request body"}`, rec.Body.String())
 	})
-	t.Run("Create Income fail spender id is 0", func(t *testing.T) {
-		db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-		if err != nil {
-			log.Fatal(err)
-		}
-		req := mockIncomeRequest()
-		req.SpenderId = 0
-		c, rec := setupTest(req)
-		h := New(db)
-		err = h.Create(c)
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-		assert.JSONEq(t, `{"message":"spender id is required"}`, rec.Body.String())
-	})
 	t.Run("Create Income fail amount is lower than 0.0", func(t *testing.T) {
 		db, _, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		if err != nil {
 			log.Fatal(err)
 		}
-		req := mockIncomeRequest()
+		req := mockTransactionRequest()
 		req.Amount = -1
 		c, rec := setupTest(req)
 		h := New(db)
@@ -135,7 +120,7 @@ func TestCreateIncome(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		req := mockIncomeRequest()
+		req := mockTransactionRequest()
 		req.Category = ""
 		c, rec := setupTest(req)
 		h := New(db)
