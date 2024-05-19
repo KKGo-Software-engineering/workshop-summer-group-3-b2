@@ -7,3 +7,5 @@ infra/iac/sonarqube/ansible/creds/*
 .env
 **/plan.json
 **/tfplan.binary
+*.out
+.envrc

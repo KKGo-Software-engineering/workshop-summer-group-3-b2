@@ -15,9 +15,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
-func TestCreateIncomeIT(t *testing.T) {
+func TestCreateTransactionIT(t *testing.T) {
 	t.Run("create transaction successfully", func(t *testing.T) {
 		sql, err := getTestDatabaseFromConfig()
 		if err != nil {
@@ -44,6 +45,54 @@ func TestCreateIncomeIT(t *testing.T) {
 		e.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusCreated, rec.Code)
+	})
+}
+
+func TestGetTransactionIT(t *testing.T) {
+	t.Run("create get transactions successfully", func(t *testing.T) {
+		sql, err := getTestDatabaseFromConfig()
+		if err != nil {
+			t.Error(err)
+		}
+		migration.ApplyMigrations(sql)
+		defer migration.RollbackMigrations(sql)
+		h := New(sql)
+		e := echo.New()
+		defer e.Close()
+		date1, _ := time.Parse(time.RFC3339, "2024-05-18T11:51:49.673703Z")
+		date2, _ := time.Parse(time.RFC3339, "2024-05-18T15:51:49.673703Z")
+		sql.Exec(insertStatement, date1, 66.6, "Food", "EXPENSE", "Note1234", "/img/transaction/1.jpg", 5)
+		sql.Exec(insertStatement, date2, 70.6, "Food", "EXPENSE", "Note555", "/img/transaction/2.jpg", 5)
+		e.GET("/transactions", h.GetAll)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions?transaction_type=EXPENSE", nil)
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `[{
+    "id": 1,
+    "date": "2024-05-18T11:51:49.673703Z",
+    "amount": 66.6,
+    "category": "Food",
+    "transaction_type": "EXPENSE",
+    "note": "Note1234",
+    "image_url": "/img/transaction/1.jpg",
+    "spender_id": 5
+  },
+  {
+    "id": 2,
+    "date": "2024-05-18T15:51:49.673703Z",
+    "amount": 70.6,
+    "category": "Food",
+    "transaction_type": "EXPENSE",
+    "note": "Note555",
+    "image_url": "/img/transaction/2.jpg",
+    "spender_id": 5
+  }]
+`, rec.Body.String())
 	})
 }
 
