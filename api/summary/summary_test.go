@@ -207,7 +207,6 @@ func TestGetIncomeSummaryHandler(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"transaction_date", "total_amount", "record_count"}).
 			AddRow("2024-04-03", 1000, 10).
 			AddRow("2024-04-04", 500, 5)
-
 		mock.ExpectPrepare(sumSQL).ExpectQuery().WillReturnRows(rows)
 
 		h := New(config.FeatureFlag{}, db)
