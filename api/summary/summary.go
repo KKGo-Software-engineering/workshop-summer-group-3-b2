@@ -124,7 +124,6 @@ func (h *handler) GetExpenseSummaryHandler(c echo.Context) error {
 	return processSummaryRequest(c, h.db, typeExpense)
 }
 
-//
-//func (h *handler) GetIncomeSummaryHandler(c echo.Context) error {
-//	return processSummaryRequest(c, h.db, typeIncome)
-//}
+func (h *handler) GetIncomeSummaryHandler(c echo.Context) error {
+	return processSummaryRequest(c, h.db, typeIncome)
+}

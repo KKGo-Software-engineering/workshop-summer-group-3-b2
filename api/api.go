@@ -48,7 +48,7 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 	{
 		h := summary.New(cfg.FeatureFlag, db)
 		v1.GET("/spenders/:id/expenses/summary", h.GetExpenseSummaryHandler)
-		//v1.GET("/spenders/:id/incomes/summary", h.GetIncomeSummaryHandler)
+		v1.GET("/spenders/:id/incomes/summary", h.GetIncomeSummaryHandler)
 	}
 
 	return &Server{e}
