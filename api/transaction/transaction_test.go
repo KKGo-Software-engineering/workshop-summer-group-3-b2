@@ -152,7 +152,7 @@ func TestGetAllExpense(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/transaction?transaction_type=EXPENSE", nil)
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transaction?transaction_type=EXPENSE", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -164,9 +164,9 @@ func TestGetAllExpense(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"id", "date", "amount", "category", "note", "image_url", "spender_id", "transaction_type"}).
 			AddRow(1, date1, 1000, "Lunch", "MOCK", "location/on/s3/bucket/eslip1", 1, "EXPENSE").
 			AddRow(2, date2, 2000, "Dinner", "MOCK", "location/on/s3/bucket/eslip2", 2, "EXPENSE")
-		mock.ExpectQuery(`SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1`).WithArgs("EXPENSE").WillReturnRows(rows)
+		mock.ExpectQuery(`SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1 and spender_id = $2`).WillReturnRows(rows)
 		h := New(db)
-		err := h.GetAll(c)
+		err := h.GetAllBySpender(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -177,7 +177,7 @@ func TestGetAllExpense(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/transaction?transaction_type=TEST", nil)
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transaction?transaction_type=TEST", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -191,7 +191,7 @@ func TestGetAllExpense(t *testing.T) {
 			AddRow(2, date2, 2000, "Dinner", "MOCK", "location/on/s3/bucket/eslip2", 2, "EXPENSE")
 		mock.ExpectQuery(`SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1`).WithArgs("EXPENSE").WillReturnRows(rows)
 		h := New(db)
-		err := h.GetAll(c)
+		err := h.GetAllBySpender(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -201,7 +201,7 @@ func TestGetAllExpense(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/transaction?transaction_type=EXPENSE", nil)
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transaction?transaction_type=EXPENSE", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -211,7 +211,7 @@ func TestGetAllExpense(t *testing.T) {
 		mock.ExpectQuery(`SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = 'EXPENSE'`).WillReturnError(assert.AnError)
 
 		h := New(db)
-		err := h.GetAll(c)
+		err := h.GetAllBySpender(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)
@@ -220,7 +220,7 @@ func TestGetAllExpense(t *testing.T) {
 		e := echo.New()
 		defer e.Close()
 
-		req := httptest.NewRequest(http.MethodGet, "/transaction?transaction_type=EXPENSE", nil)
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transaction?transaction_type=EXPENSE", nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 
@@ -232,7 +232,7 @@ func TestGetAllExpense(t *testing.T) {
 			AddRow("", "date2", 2000, "Dinner", "MOCK", "location/on/s3/bucket/eslip2", 2, "EXPENSE")
 		mock.ExpectQuery(`SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1`).WithArgs("EXPENSE").WillReturnRows(rows)
 		h := New(db)
-		err := h.GetAll(c)
+		err := h.GetAllBySpender(c)
 
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, rec.Code)

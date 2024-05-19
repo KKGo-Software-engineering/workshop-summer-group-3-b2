@@ -51,14 +51,12 @@ func TestGetTransactionIT(t *testing.T) {
 		defer e.Close()
 		date1, _ := time.Parse(time.RFC3339, "2024-05-18T11:51:49.673703Z")
 		date2, _ := time.Parse(time.RFC3339, "2024-05-18T15:51:49.673703Z")
-		sql.Exec(insertStatement, date1, 66.6, "Food", "EXPENSE", "Note1234", "/img/transaction/1.jpg", 5)
-		sql.Exec(insertStatement, date2, 70.6, "Food", "EXPENSE", "Note555", "/img/transaction/2.jpg", 5)
-		e.GET("/transactions", h.GetAll)
-
-		req := httptest.NewRequest(http.MethodGet, "/transactions?transaction_type=EXPENSE", nil)
+		sql.Exec(insertStatement, date1, 66.6, "Food", "EXPENSE", "Note1234", "/img/transaction/1.jpg", 1)
+		sql.Exec(insertStatement, date2, 70.6, "Food", "EXPENSE", "Note555", "/img/transaction/2.jpg", 1)
+		e.GET("/spenders/:spenderId/transactions", h.GetAllBySpender)
+		req := httptest.NewRequest(http.MethodGet, "/spenders/1/transactions?transaction_type=EXPENSE", nil)
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 		rec := httptest.NewRecorder()
-
 		e.ServeHTTP(rec, req)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
@@ -71,7 +69,7 @@ func TestGetTransactionIT(t *testing.T) {
     "transaction_type": "EXPENSE",
     "note": "Note1234",
     "image_url": "/img/transaction/1.jpg",
-    "spender_id": 5
+    "spender_id": 1
   },
   {
     "id": 2,
@@ -81,7 +79,7 @@ func TestGetTransactionIT(t *testing.T) {
     "transaction_type": "EXPENSE",
     "note": "Note555",
     "image_url": "/img/transaction/2.jpg",
-    "spender_id": 5
+    "spender_id": 1
   }]
 `
 		var want []response

@@ -82,14 +82,15 @@ func validateTransaction(req request) error {
 	return nil
 }
 
-func (h handler) GetAll(c echo.Context) error {
+func (h handler) GetAllBySpender(c echo.Context) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
+	spenderId := c.Param("spenderId")
 	tranType := c.QueryParam("transaction_type")
 	if tranType != "EXPENSE" && tranType != "INCOME" {
 		return c.JSON(http.StatusBadRequest, transactionError{Message: "invalid transaction type"})
 	}
-	rows, err := h.db.QueryContext(ctx, `SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1`, tranType)
+	rows, err := h.db.QueryContext(ctx, `SELECT id, date, amount, category, note, image_url, spender_id, transaction_type FROM transaction where transaction_type = $1 and spender_id = $2`, tranType, spenderId)
 	if err != nil {
 		logger.Error("query error", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, err.Error())
