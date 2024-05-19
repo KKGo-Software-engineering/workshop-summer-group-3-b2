@@ -68,4 +68,104 @@ func TestGetExpenseSummaryHandler(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 
+	t.Run("get summary succesfully", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id/expenses/summary")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"transaction_date", "total_amount", "record_count"}).
+			AddRow("2024-04-03", 1000, 10).
+			AddRow("2024-04-04", 500, 5)
+
+		mock.ExpectPrepare(sumSQL).ExpectQuery().WillReturnRows(rows)
+
+		h := New(config.FeatureFlag{}, db)
+		err := h.GetExpenseSummaryHandler(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.JSONEq(t, `{"total_amount": 1500, "average_per_day": 750, "count_transaction": 15}`, rec.Body.String())
+	})
+
+	t.Run("get summary failed on database", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id/expenses/summary")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectPrepare(sumSQL).WillReturnError(assert.AnError)
+
+		h := New(config.FeatureFlag{}, db)
+		err := h.GetExpenseSummaryHandler(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("query error", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id/expenses/summary")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		mock.ExpectPrepare(sumSQL).ExpectQuery().WillReturnError(assert.AnError)
+
+		h := New(config.FeatureFlag{}, db)
+		err := h.GetExpenseSummaryHandler(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
+	t.Run("scan error", func(t *testing.T) {
+		e := echo.New()
+		defer e.Close()
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetPath("/spenders/:id/expenses/summary")
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+
+		db, mock, _ := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		defer db.Close()
+
+		rows := sqlmock.NewRows([]string{"transaction_date", "total_amount"}).
+			AddRow("2024-04-03", 1000).
+			AddRow("2024-04-04", 500)
+		mock.ExpectPrepare(sumSQL).ExpectQuery().WillReturnRows(rows)
+
+		h := New(config.FeatureFlag{}, db)
+		err := h.GetExpenseSummaryHandler(c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	})
+
 }
