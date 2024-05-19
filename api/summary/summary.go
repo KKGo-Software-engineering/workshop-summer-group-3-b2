@@ -45,6 +45,21 @@ type handler struct {
 	db   *sql.DB
 }
 
+const (
+	sumSQL = `SELECT
+	    date_trunc('day', date)::date AS transaction_date,
+	    SUM(amount) AS total_amount,
+	    COUNT(*) AS record_count
+	FROM
+	    "transaction"
+	WHERE
+	    transaction_type = $1 AND spender_id = $2
+	GROUP BY
+	    date_trunc('day', date)::date
+	ORDER BY
+	    transaction_date;`
+)
+
 func New(cfg config.FeatureFlag, db *sql.DB) *handler {
 	return &handler{cfg, db}
 }
@@ -68,22 +83,7 @@ func summary(data []RawData) Summary {
 	}
 }
 
-const (
-	sumSQL = `SELECT
-	    date_trunc('day', date)::date AS transaction_date,
-	    SUM(amount) AS total_amount,
-	    COUNT(*) AS record_count
-	FROM
-	    "transaction"
-	WHERE
-	    transaction_type = $1 AND spender_id = $2
-	GROUP BY
-	    date_trunc('day', date)::date
-	ORDER BY
-	    transaction_date;`
-)
-
-func getSummary(c echo.Context, db *sql.DB, tnxType string) error {
+func processSummaryRequest(c echo.Context, db *sql.DB, tnxType string) error {
 	logger := mlog.L(c)
 	ctx := c.Request().Context()
 
@@ -122,10 +122,10 @@ func getSummary(c echo.Context, db *sql.DB, tnxType string) error {
 }
 
 func (h *handler) GetExpenseSummaryHandler(c echo.Context) error {
-	return getSummary(c, h.db, typeExpense)
+	return processSummaryRequest(c, h.db, typeExpense)
 }
 
 //
 //func (h *handler) GetIncomeSummaryHandler(c echo.Context) error {
-//	return getSummary(c, h.db, typeIncome)
+//	return processSummaryRequest(c, h.db, typeIncome)
 //}
