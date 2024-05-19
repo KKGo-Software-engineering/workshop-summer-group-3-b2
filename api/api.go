@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"github.com/KKGo-Software-engineering/workshop-summer/api/summary"
 	"github.com/KKGo-Software-engineering/workshop-summer/api/transaction"
 
 	"github.com/KKGo-Software-engineering/workshop-summer/api/config"
@@ -41,6 +42,12 @@ func New(db *sql.DB, cfg config.Config, logger *zap.Logger) *Server {
 	{
 		h := transaction.New(db)
 		v1.POST("/transactions", h.Create)
+	}
+
+	{
+		h := summary.New(cfg.FeatureFlag, db)
+		v1.GET("/spenders/:id/expenses/summary", h.GetExpenseSummaryHandler)
+		//v1.GET("/spenders/:id/incomes/summary", h.GetIncomeSummaryHandler)
 	}
 
 	return &Server{e}
