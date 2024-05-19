@@ -47,7 +47,7 @@ func setupTest(transaction transactionRequest) (echo.Context, *httptest.Response
 	}
 	e := echo.New()
 	defer e.Close()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/transaction", bytes.NewBuffer(body))
+	req := httptest.NewRequest(http.MethodPost, "/transactions", bytes.NewBuffer(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
